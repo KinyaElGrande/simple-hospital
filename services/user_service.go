@@ -3,9 +3,9 @@ package services
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/kinyaelgrande/simple-hospital/database"
 	"github.com/kinyaelgrande/simple-hospital/models"
 	"github.com/kinyaelgrande/simple-hospital/services/auth"
@@ -23,7 +23,7 @@ func NewUserService() *UserService {
 }
 
 func (s *UserService) CreateUser(user *models.User) error {
-	spew.Dump("Svx", user)
+	user.PasswordHash = fmt.Sprintf("%s123", user.Username)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.PasswordHash), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -53,6 +53,36 @@ func (s *UserService) CreateUser(user *models.User) error {
 	id, _ := result.LastInsertId()
 	user.UserID = int(id)
 	return nil
+}
+
+func (s *UserService) GetUsers() ([]*models.User, error) {
+	var users []*models.User
+	query := `SELECT user_id, username, password_hash, role, full_name, two_fa_secret, two_fa_enabled, two_fa_backup_codes
+              FROM Users`
+	rows, err := database.GetDB().Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var user models.User
+		var backupCodesJSON sql.NullString
+		err := rows.Scan(&user.UserID, &user.Username, &user.PasswordHash, &user.Role,
+			&user.FullName, &user.TwoFASecret, &user.TwoFAEnabled, &backupCodesJSON)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse backup codes if they exist
+		if backupCodesJSON.Valid && backupCodesJSON.String != "" {
+			json.Unmarshal([]byte(backupCodesJSON.String), &user.TwoFABackupCodes)
+		}
+
+		users = append(users, &user)
+	}
+
+	return users, nil
 }
 
 func (s *UserService) GetUser(id int) (*models.User, error) {

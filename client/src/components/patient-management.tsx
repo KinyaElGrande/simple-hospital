@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Badge } from "./ui/badge";
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -19,15 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog";
+} from "../components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import { Textarea } from "./ui/textarea";
+} from "../components/ui/select";
+import { Textarea } from "../components/ui/textarea";
+import { Alert, AlertDescription } from "../components/ui/alert";
 import {
   Search,
   Plus,
@@ -35,126 +36,160 @@ import {
   Trash2,
   User,
   Phone,
-  Mail,
+  AlertTriangle,
   MapPin,
 } from "lucide-react";
-import { useAuth } from "./auth-context";
-
-interface Patient {
-  id: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: string;
-  phone: string;
-  email: string;
-  address: string;
-  emergencyContact: string;
-  medicalHistory: string;
-  createdAt: string;
-}
-
-const mockPatients: Patient[] = [
-  {
-    id: "1",
-    firstName: "John",
-    lastName: "Doe",
-    dateOfBirth: "1985-03-15",
-    gender: "Male",
-    phone: "(555) 123-4567",
-    email: "john.doe@email.com",
-    address: "123 Main St, City, State 12345",
-    emergencyContact: "Jane Doe - (555) 987-6543",
-    medicalHistory: "Hypertension, Diabetes Type 2",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    firstName: "Jane",
-    lastName: "Smith",
-    dateOfBirth: "1990-07-22",
-    gender: "Female",
-    phone: "(555) 234-5678",
-    email: "jane.smith@email.com",
-    address: "456 Oak Ave, City, State 12345",
-    emergencyContact: "Bob Smith - (555) 876-5432",
-    medicalHistory: "Asthma, Allergies (Penicillin)",
-    createdAt: "2024-02-10",
-  },
-  {
-    id: "3",
-    firstName: "Mike",
-    lastName: "Johnson",
-    dateOfBirth: "1978-11-08",
-    gender: "Male",
-    phone: "(555) 345-6789",
-    email: "mike.johnson@email.com",
-    address: "789 Pine St, City, State 12345",
-    emergencyContact: "Sarah Johnson - (555) 765-4321",
-    medicalHistory: "No significant medical history",
-    createdAt: "2024-03-05",
-  },
-];
+import { useAuth } from "../components/auth-context";
+import { api, type Patient } from "../lib/api";
 
 export function PatientManagement() {
   const { user } = useAuth();
-  const [patients, setPatients] = useState<Patient[]>(mockPatients);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({});
+  const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState("");
 
-  const canEdit = user?.role === "doctor";
-  const canDelete = user?.role === "doctor";
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      assignRoleBasedOnUsername(user.username);
+    }
+  }, [user]);
+
+  function assignRoleBasedOnUsername(userName: string) {
+    if (userName.startsWith("doc")) {
+      setRole("doctor");
+    } else if (userName.startsWith("nrs")) {
+      setRole("nurse");
+    } else if (userName.startsWith("pha")) {
+      setRole("pharmacist");
+    } else if (userName.startsWith("adm")) {
+      setRole("admin");
+    }
+  }
+
+  const canEdit = role === "doctor";
+  const canDelete = role === "doctor";
+
+  useEffect(() => {
+    loadPatients();
+  }, []);
+
+  const loadPatients = async () => {
+    setLoading(true);
+    try {
+      const response = await api.getPatients();
+      if (response.data) {
+        setPatients(response.data);
+      } else {
+        setError(response.error || "Failed to load patients");
+      }
+    } catch (error) {
+      setError("Failed to load patients");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredPatients = patients.filter(
     (patient) =>
       `${patient.firstName} ${patient.lastName}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      patient.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.allergies.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.phone.includes(searchTerm),
   );
 
-  const handleAddPatient = () => {
-    if (formData.firstName && formData.lastName) {
-      const newPatient: Patient = {
-        id: Date.now().toString(),
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        dateOfBirth: formData.dateOfBirth || "",
-        gender: formData.gender || "",
-        phone: formData.phone || "",
-        email: formData.email || "",
-        address: formData.address || "",
-        emergencyContact: formData.emergencyContact || "",
-        medicalHistory: formData.medicalHistory || "",
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setPatients([...patients, newPatient]);
-      setFormData({});
-      setIsAddDialogOpen(false);
+  const handleAddPatient = async (event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    console.log("handleAddPatient called", {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      isCreating,
+    });
+    if (formData.firstName && formData.lastName && !isCreating) {
+      setIsCreating(true);
+      console.log("Starting patient creation...");
+      try {
+        const response = await api.createPatient({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          dateOfBirth: formData.dateOfBirth || "",
+          gender: formData.gender || "",
+          phone: formData.phone || "",
+          address: formData.address || "",
+          allergies: formData.allergies || "",
+          emergencyContact: formData.emergencyContact || "",
+          medicalHistory: formData.medicalHistory || "",
+        });
+
+        if (response.data) {
+          console.log("Patient created successfully:", response.data);
+          setPatients([...patients, response.data]);
+          setFormData({});
+          setIsAddDialogOpen(false);
+          setError("");
+        } else {
+          console.log("Patient creation failed:", response.error);
+          setError(response.error || "Failed to create patient");
+        }
+      } catch (error) {
+        console.log("Patient creation error:", error);
+        setError("Failed to create patient");
+      } finally {
+        console.log("Patient creation finished, setting isCreating to false");
+        setIsCreating(false);
+      }
     }
   };
 
-  const handleEditPatient = () => {
+  const handleEditPatient = async () => {
     if (selectedPatient && formData.firstName && formData.lastName) {
-      const updatedPatients = patients.map((patient) =>
-        patient.id === selectedPatient.id
-          ? { ...patient, ...formData }
-          : patient,
-      );
-      setPatients(updatedPatients);
-      setFormData({});
-      setSelectedPatient(null);
-      setIsEditDialogOpen(false);
+      try {
+        const response = await api.updatePatient(selectedPatient.id, formData);
+
+        if (response.data) {
+          const updatedPatients = patients.map((patient) =>
+            patient.id === selectedPatient.id ? response.data! : patient,
+          );
+          setPatients(updatedPatients);
+          setFormData({});
+          setSelectedPatient(null);
+          setIsEditDialogOpen(false);
+          setError("");
+        } else {
+          setError(response.error || "Failed to update patient");
+        }
+      } catch (error) {
+        setError("Failed to update patient");
+      }
     }
   };
 
-  const handleDeletePatient = (patientId: string) => {
+  const handleDeletePatient = async (patientId: string) => {
     if (canDelete) {
-      setPatients(patients.filter((patient) => patient.id !== patientId));
+      try {
+        const response = await api.deletePatient(patientId);
+
+        if (response.data !== undefined) {
+          setPatients(patients.filter((patient) => patient.id !== patientId));
+          setError("");
+        } else {
+          setError(response.error || "Failed to delete patient");
+        }
+      } catch (error) {
+        setError("Failed to delete patient");
+      }
     }
   };
 
@@ -163,6 +198,14 @@ export function PatientManagement() {
     setFormData(patient);
     setIsEditDialogOpen(true);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -252,13 +295,12 @@ export function PatientManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="allergies">Allergies</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={formData.email || ""}
+                  id="allergies"
+                  value={formData.allergies || ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
+                    setFormData({ ...formData, allergies: e.target.value })
                   }
                 />
               </div>
@@ -304,11 +346,23 @@ export function PatientManagement() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleAddPatient}>Add Patient</Button>
+              <Button
+                onClick={handleAddPatient}
+                disabled={isCreating}
+                type="button"
+              >
+                {isCreating ? "Creating..." : "Add Patient"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -357,8 +411,8 @@ export function PatientManagement() {
                       <span>{patient.phone}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span>{patient.email}</span>
+                      <AlertTriangle className="h-4 w-4 text-gray-400" />
+                      <span>{patient.allergies || "None"}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-gray-400" />
@@ -475,13 +529,12 @@ export function PatientManagement() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="editEmail">Email</Label>
+              <Label htmlFor="editAllergies">Allergies</Label>
               <Input
-                id="editEmail"
-                type="email"
-                value={formData.email || ""}
+                id="editAllergies"
+                value={formData.allergies || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
+                  setFormData({ ...formData, allergies: e.target.value })
                 }
               />
             </div>

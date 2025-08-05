@@ -1,11 +1,34 @@
-import { Button } from "./ui/button";
+"use client";
+
+import { Button } from "../components/ui/button";
 import { cn } from "../lib/utils";
 import { Users, FileText, Pill, UserCog, Home, Shield } from "lucide-react";
-import { useAuth } from "./auth-context";
-import type { SidebarProps, ActiveSection } from "./dashboard";
+import { useAuth } from "../components/auth-context";
+import type { SidebarProps, ActiveSection } from "../components/dashboard";
+import { useEffect, useState } from "react";
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
   const { user } = useAuth();
+
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      assignRoleBasedOnUsername(user.username);
+    }
+  }, [user]);
+
+  function assignRoleBasedOnUsername(userName: string) {
+    if (userName.startsWith("doc")) {
+      setRole("doctor");
+    } else if (userName.startsWith("nrs")) {
+      setRole("nurse");
+    } else if (userName.startsWith("pha")) {
+      setRole("pharmacist");
+    } else if (userName.startsWith("adm")) {
+      setRole("admin");
+    }
+  }
 
   const getNavigationItems = () => {
     const items = [
@@ -17,7 +40,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       },
     ];
 
-    if (user?.role === "admin") {
+    if (role === "admin") {
       items.push({
         id: "users" as ActiveSection,
         label: "User Management",
@@ -26,7 +49,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       });
     }
 
-    if (user?.role === "doctor" || user?.role === "nurse") {
+    if (role === "doctor" || role === "nurse") {
       items.push({
         id: "patients" as ActiveSection,
         label: "Patients",
@@ -41,7 +64,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       });
     }
 
-    if (user?.role === "doctor" || user?.role === "pharmacist") {
+    if (role === "doctor" || role === "pharmacist") {
       items.push({
         id: "prescriptions" as ActiveSection,
         label: "Prescriptions",
@@ -50,7 +73,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       });
     }
 
-    return items.filter((item) => item.roles.includes(user?.role || ""));
+    return items.filter((item) => item.roles.includes(role || ""));
   };
 
   const navigationItems = getNavigationItems();

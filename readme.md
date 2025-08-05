@@ -60,3 +60,6 @@ CREATE TABLE Prescriptions (
     FOREIGN KEY (patient_id) REFERENCES Patients(patient_id),
     FOREIGN KEY (doctor_id) REFERENCES Users(user_id)
 );
+
+
+== Please clean up the 2FA!!

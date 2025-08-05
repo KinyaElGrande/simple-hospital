@@ -8,31 +8,31 @@ const (
 )
 
 type Patient struct {
-	PatientID        int    `json:"patient_id"`
-	FirstName        string `json:"first_name"`
-	LastName         string `json:"last_name"`
-	DateOfBirth      string `json:"date_of_birth"`
+	PatientID        int    `json:"id"`
+	FirstName        string `json:"firstName"`
+	LastName         string `json:"lastName"`
+	DateOfBirth      string `json:"dateOfBirth"`
 	Gender           string `json:"gender"`
-	ContactInfo      string `json:"contact_info"`
+	ContactInfo      string `json:"phone"`
 	Address          string `json:"address"`
-	MedicalHistory   string `json:"medical_history"`
+	MedicalHistory   string `json:"medicalHistory"`
 	Allergies        string `json:"allergies"`
-	EmergencyContact string `json:"emergency_contact"`
+	EmergencyContact string `json:"emergencyContact"`
 }
 
 type User struct {
-	UserID           int      `json:"user_id"`
+	UserID           int      `json:"id"`
 	Username         string   `json:"username"`
 	PasswordHash     string   `json:"password_hash"`
 	Role             string   `json:"role"`
-	FullName         string   `json:"full_name"`
+	FullName         string   `json:"fullName"`
 	TwoFASecret      string   `json:"two_fa_secret"`
-	TwoFAEnabled     bool     `json:"two_fa_enabled"`
-	TwoFABackupCodes []string `json:"two_fa_backup_codes"`
+	TwoFAEnabled     bool     `json:"twoFactorEnabled"`
+	TwoFABackupCodes []string `json:"backupCodes"`
 }
 
 type MedicalRecord struct {
-	RecordID      int    `json:"record_id"`
+	RecordID      int    `json:"id"`
 	PatientID     int    `json:"patient_id"`
 	DoctorID      int    `json:"doctor_id"`
 	VisitDate     string `json:"visit_date"`
@@ -42,25 +42,26 @@ type MedicalRecord struct {
 }
 
 type MedicalRecordNurseView struct {
-	RecordID  int    `json:"record_id"`
+	RecordID  int    `json:"id"`
 	PatientID int    `json:"patient_id"`
 	VisitDate string `json:"visit_date"`
 	Diagnosis string `json:"diagnosis"`
 }
 
 type Prescription struct {
-	PrescriptionID int    `json:"prescription_id"`
-	PatientID      int    `json:"patient_id"`
+	PrescriptionID int    `json:"id"`
+	PatientID      int    `json:"patientId"`
 	DoctorID       int    `json:"doctor_id"`
-	PrescribedDate string `json:"prescribed_date"`
+	PrescribedDate string `json:"prescribedDate"`
 	Medication     string `json:"medication"`
 	Dosage         string `json:"dosage"`
+	Status         string `json:"status"`
 	Duration       string `json:"duration"`
 	Instructions   string `json:"instructions"`
 }
 
 type TwoFASetup struct {
-	Secret string `json:"secret"`
-	QRCode string `json:"qr_code"` // Base64 encoded QR code
-	URL    string `json:"url"`     // TOTP URL for manual entry
+	SecretKey   string   `json:"secretKey"`
+	QRCodeUrl   string   `json:"qrCodeUrl"`   // Base64 encoded QR code data URL
+	BackupCodes []string `json:"backupCodes"` // Generated during enable
 }

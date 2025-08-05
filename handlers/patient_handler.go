@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -22,17 +23,22 @@ func NewPatientHandler() *PatientHandler {
 }
 
 func (h *PatientHandler) CreatePatient(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("CreatePatient handler called for patient creation\n")
 	var patient models.Patient
 	if err := json.NewDecoder(r.Body).Decode(&patient); err != nil {
+		fmt.Printf("Error decoding patient JSON: %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	fmt.Printf("Creating patient: %s %s\n", patient.FirstName, patient.LastName)
 	if err := h.service.CreatePatient(&patient); err != nil {
+		fmt.Printf("Error creating patient in service: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	fmt.Printf("Patient created successfully with ID: %d\n", patient.PatientID)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(patient)
 }

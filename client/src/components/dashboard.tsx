@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Sidebar } from "./sidebar";
-import { Header } from "./header";
-import { PatientManagement } from "./patient-management";
-import { MedicalRecords } from "./medical-records";
-import { PrescriptionManagement } from "./prescription-management";
-import { UserManagement } from "./user-management";
-import { DashboardHome } from "./dashboard-home";
+import { Sidebar } from "../components/sidebar";
+import { Header } from "../components/header";
+import { DashboardHome } from "../components/dashboard-home";
+import { PatientManagement } from "../components/patient-management";
+import { MedicalRecords } from "../components/medical-records";
+import { PrescriptionManagement } from "../components/prescription-management";
+import { UserManagement } from "../components/user-management";
 
 export type ActiveSection =
   | "dashboard"
@@ -16,11 +16,16 @@ export type ActiveSection =
   | "prescriptions"
   | "users";
 
+export interface SidebarProps {
+  activeSection: ActiveSection;
+  onSectionChange: (section: ActiveSection) => void;
+}
+
 export function Dashboard() {
   const [activeSection, setActiveSection] =
     useState<ActiveSection>("dashboard");
 
-  const renderContent = () => {
+  const renderSection = () => {
     switch (activeSection) {
       case "dashboard":
         return <DashboardHome />;
@@ -38,14 +43,14 @@ export function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6">{renderContent()}</main>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Header />
+      <div className="flex flex-1">
+        <Sidebar
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+        />
+        <main className="flex-1 p-6 overflow-auto">{renderSection()}</main>
       </div>
     </div>
   );

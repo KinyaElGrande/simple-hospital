@@ -1,12 +1,33 @@
 "use client";
 
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 import { LogOut, User, Shield } from "lucide-react";
-import { useAuth } from "./auth-context";
+import { useAuth } from "../components/auth-context";
+import { useState, useEffect } from "react";
 
 export function Header() {
   const { user, logout } = useAuth();
+
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      assignRoleBasedOnUsername(user.username);
+    }
+  }, [user]);
+
+  function assignRoleBasedOnUsername(userName: string) {
+    if (userName.startsWith("doc")) {
+      setRole("doctor");
+    } else if (userName.startsWith("nrs")) {
+      setRole("nurse");
+    } else if (userName.startsWith("pha")) {
+      setRole("pharmacist");
+    } else if (userName.startsWith("adm")) {
+      setRole("admin");
+    }
+  }
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -39,8 +60,8 @@ export function Header() {
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-gray-600" />
             <span className="text-sm font-medium">{user?.username}</span>
-            <Badge className={getRoleBadgeColor(user?.role || "")}>
-              {user?.role?.toUpperCase()}
+            <Badge className={getRoleBadgeColor(role || "")}>
+              {role?.toUpperCase()}
             </Badge>
             {user?.twoFactorEnabled && (
               <Shield

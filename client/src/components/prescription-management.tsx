@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Badge } from "./ui/badge";
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -19,95 +19,79 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog";
+} from "../components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import { Textarea } from "./ui/textarea";
+} from "../components/ui/select";
+import { Textarea } from "../components/ui/textarea";
+import { Alert, AlertDescription } from "../components/ui/alert";
 import { Search, Plus, Pill, Calendar, User, Clock } from "lucide-react";
-import { useAuth } from "./auth-context";
-
-interface Prescription {
-  id: string;
-  patientId: string;
-  patientName: string;
-  medication: string;
-  dosage: string;
-  frequency: string;
-  duration: string;
-  instructions: string;
-  prescribedBy: string;
-  prescribedDate: string;
-  status: "active" | "completed" | "cancelled";
-  refillsRemaining: number;
-}
-
-const mockPrescriptions: Prescription[] = [
-  {
-    id: "RX001",
-    patientId: "1",
-    patientName: "John Doe",
-    medication: "Lisinopril",
-    dosage: "10mg",
-    frequency: "Once daily",
-    duration: "30 days",
-    instructions: "Take with food. Monitor blood pressure daily.",
-    prescribedBy: "Dr. John Smith",
-    prescribedDate: "2024-01-15",
-    status: "active",
-    refillsRemaining: 2,
-  },
-  {
-    id: "RX002",
-    patientId: "2",
-    patientName: "Jane Smith",
-    medication: "Albuterol Inhaler",
-    dosage: "90mcg",
-    frequency: "As needed",
-    duration: "90 days",
-    instructions:
-      "Use as rescue inhaler for shortness of breath. Shake well before use.",
-    prescribedBy: "Dr. John Smith",
-    prescribedDate: "2024-02-10",
-    status: "active",
-    refillsRemaining: 1,
-  },
-  {
-    id: "RX003",
-    patientId: "2",
-    patientName: "Jane Smith",
-    medication: "Prednisone",
-    dosage: "20mg",
-    frequency: "Once daily",
-    duration: "7 days",
-    instructions:
-      "Take with food. Complete full course even if feeling better.",
-    prescribedBy: "Dr. John Smith",
-    prescribedDate: "2024-02-10",
-    status: "completed",
-    refillsRemaining: 0,
-  },
-];
+import { useAuth } from "../components/auth-context";
+import { api, type Prescription } from "../lib/api";
+import { PatientSelector } from "../components/ui/patient-selector";
 
 export function PrescriptionManagement() {
   const { user } = useAuth();
-  const [prescriptions, setPrescriptions] =
-    useState<Prescription[]>(mockPrescriptions);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<Partial<Prescription>>({});
+  const [formData, setFormData] = useState<
+    Partial<Prescription & { selectedPatientId?: number }>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const canCreate = user?.role === "doctor";
-  const isPharmacist = user?.role === "pharmacist";
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      assignRoleBasedOnUsername(user.username);
+    }
+  }, [user]);
+
+  function assignRoleBasedOnUsername(userName: string) {
+    if (userName.startsWith("doc")) {
+      setRole("doctor");
+    } else if (userName.startsWith("nrs")) {
+      setRole("nurse");
+    } else if (userName.startsWith("pha")) {
+      setRole("pharmacist");
+    } else if (userName.startsWith("adm")) {
+      setRole("admin");
+    }
+  }
+
+  const canCreate = role === "doctor";
+  const isPharmacist = role === "pharmacist";
+
+  useEffect(() => {
+    loadPrescriptions();
+  }, []);
+
+  const loadPrescriptions = async () => {
+    setLoading(true);
+    try {
+      const response = await api.getPrescriptions();
+      if (response.data) {
+        setPrescriptions(response.data);
+      } else {
+        setError(response.error || "Failed to load prescriptions");
+      }
+    } catch (error) {
+      setError("Failed to load prescriptions");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredPrescriptions = prescriptions.filter((prescription) => {
     const matchesSearch =
-      prescription.patientName
+      (prescription.patientName || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
       prescription.medication
@@ -121,26 +105,64 @@ export function PrescriptionManagement() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleAddPrescription = () => {
-    if (formData.patientName && formData.medication && formData.dosage) {
-      const newPrescription: Prescription = {
-        id: `RX${String(prescriptions.length + 1).padStart(3, "0")}`,
-        patientId: Date.now().toString(),
-        patientName: formData.patientName,
+  const handleAddPrescription = async () => {
+    if (
+      formData.selectedPatientId &&
+      formData.patientName &&
+      formData.medication &&
+      formData.dosage
+    ) {
+      console.log("Creating prescription with data:", {
+        patientId: formData.selectedPatientId,
+        doctorId: parseInt(user?.id || "0"),
         medication: formData.medication,
         dosage: formData.dosage,
-        frequency: formData.frequency || "",
         duration: formData.duration || "",
         instructions: formData.instructions || "",
-        prescribedBy: user?.fullName || "",
         prescribedDate: new Date().toISOString().split("T")[0],
         status: "active",
-        refillsRemaining: formData.refillsRemaining || 0,
-      };
-      setPrescriptions([...prescriptions, newPrescription]);
-      setFormData({});
-      setIsAddDialogOpen(false);
+      });
+
+      try {
+        const response = await api.createPrescription({
+          patientId: formData.selectedPatientId,
+          patientName: formData.patientName,
+          medication: formData.medication,
+          dosage: formData.dosage,
+          frequency: formData.frequency || "",
+          duration: formData.duration || "",
+          instructions: formData.instructions || "",
+          prescribedBy: user?.fullName || "",
+          prescribedDate: new Date().toISOString().split("T")[0],
+          status: "active",
+          refillsRemaining: formData.refillsRemaining || 0,
+        });
+
+        console.log("Prescription API response:", response);
+
+        if (response.data) {
+          console.log("Prescription created successfully:", response.data);
+          setPrescriptions([...prescriptions, response.data]);
+          setFormData({});
+          setIsAddDialogOpen(false);
+          setError("");
+        } else {
+          console.log("Prescription creation failed:", response.error);
+          setError(response.error || "Failed to create prescription");
+        }
+      } catch (error) {
+        console.log("Prescription creation error:", error);
+        setError("Failed to create prescription");
+      }
     }
+  };
+
+  const handlePatientSelect = (patientId: number, patientName: string) => {
+    setFormData({
+      ...formData,
+      selectedPatientId: patientId,
+      patientName: patientName,
+    });
   };
 
   const handleStatusChange = (
@@ -170,6 +192,14 @@ export function PrescriptionManagement() {
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -201,13 +231,11 @@ export function PrescriptionManagement() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="patientName">Patient Name *</Label>
-                  <Input
-                    id="patientName"
-                    value={formData.patientName || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, patientName: e.target.value })
-                    }
+                  <PatientSelector
+                    value={formData.selectedPatientId}
+                    onPatientSelect={handlePatientSelect}
+                    label="Patient"
+                    placeholder="Select a patient..."
                     required
                   />
                 </div>
@@ -270,6 +298,19 @@ export function PrescriptionManagement() {
                     </Select>
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="frequency">Frequency</Label>
+                    <Input
+                      id="frequency"
+                      value={formData.frequency || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, frequency: e.target.value })
+                      }
+                      placeholder="e.g., Twice daily, Every 8 hours"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="duration">Duration</Label>
                     <Input
                       id="duration"
@@ -280,22 +321,23 @@ export function PrescriptionManagement() {
                       placeholder="e.g., 30 days, 2 weeks"
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="refillsRemaining">Refills Remaining</Label>
-                  <Input
-                    id="refillsRemaining"
-                    type="number"
-                    min="0"
-                    max="12"
-                    value={formData.refillsRemaining || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        refillsRemaining: Number.parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="refillsRemaining">Refills Remaining</Label>
+                    <Input
+                      id="refillsRemaining"
+                      type="number"
+                      min="0"
+                      max="12"
+                      value={formData.refillsRemaining || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          refillsRemaining:
+                            Number.parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="instructions">Instructions</Label>
@@ -325,6 +367,12 @@ export function PrescriptionManagement() {
           </Dialog>
         )}
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>

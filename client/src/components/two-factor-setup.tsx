@@ -1,44 +1,97 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "./ui/button";
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Switch } from "./ui/switch";
-import { Label } from "./ui/label";
-import { Alert, AlertDescription } from "./ui/alert";
+} from "../components/ui/card";
+import { Switch } from "../components/ui/switch";
+import { Label } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+import { Alert, AlertDescription } from "../components/ui/alert";
 import { QrCode, Key, Shield, Copy } from "lucide-react";
-import { useAuth } from "./auth-context";
+import { useAuth } from "../components/auth-context";
+import { api } from "../lib/api";
 
 export function TwoFactorSetup({ onComplete }: { onComplete: () => void }) {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
-  const { user, enable2FA, disable2FA } = useAuth();
+  const [setupData, setSetupData] = useState<{
+    secretKey: string;
+    qrCodeUrl: string;
+    backupCodes: string[];
+  } | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { enable2FA, disable2FA } = useAuth();
 
-  const secretKey = "JBSWY3DPEHPK3PXP"; // Mock secret key
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/MedicalApp:${user?.username}?secret=${secretKey}&issuer=MedicalApp`;
+  useEffect(() => {
+    // Load 2FA setup data when component mounts
+    loadSetupData();
+  }, []);
 
-  const backupCodes = [
-    "12345-67890",
-    "23456-78901",
-    "34567-89012",
-    "45678-90123",
-    "56789-01234",
-  ];
+  const loadSetupData = async () => {
+    try {
+      const response = await api.getTwoFASetup();
+      if (response.data) {
+        setSetupData(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to load 2FA setup:", err);
+    }
+  };
 
-  const handleToggle2FA = (enabled: boolean) => {
-    setTwoFactorEnabled(enabled);
-    if (enabled) {
-      enable2FA();
-      setShowBackupCodes(true);
-    } else {
-      disable2FA();
-      setShowBackupCodes(false);
+  const handleToggle2FA = async (enabled: boolean) => {
+    if (enabled && !twoFactorEnabled) {
+      // Enabling 2FA - need verification code
+      if (!verificationCode) {
+        setError(
+          "Please enter the verification code from your authenticator app",
+        );
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await api.enableTwoFA(
+          verificationCode,
+          setupData?.secretKey,
+        );
+        if (response.data) {
+          setTwoFactorEnabled(true);
+          enable2FA();
+          setShowBackupCodes(true);
+          setSetupData((prev) =>
+            prev ? { ...prev, backupCodes: response.data!.backupCodes } : null,
+          );
+          setError("");
+        } else {
+          setError(response.error || "Failed to enable 2FA");
+        }
+      } catch (error) {
+        setError("Failed to enable 2FA");
+      } finally {
+        setLoading(false);
+      }
+    } else if (!enabled && twoFactorEnabled) {
+      // Disabling 2FA
+      setLoading(true);
+      try {
+        await api.disableTwoFA();
+        setTwoFactorEnabled(false);
+        disable2FA();
+        setShowBackupCodes(false);
+        setError("");
+      } catch {
+        setError("Failed to disable 2FA");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -74,10 +127,17 @@ export function TwoFactorSetup({ onComplete }: { onComplete: () => void }) {
               id="2fa-toggle"
               checked={twoFactorEnabled}
               onCheckedChange={handleToggle2FA}
+              disabled={loading}
             />
           </div>
 
-          {twoFactorEnabled && (
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {setupData && !twoFactorEnabled && (
             <div className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -87,7 +147,10 @@ export function TwoFactorSetup({ onComplete }: { onComplete: () => void }) {
                   </h3>
                   <div className="flex justify-center">
                     <img
-                      src={qrCodeUrl || "/placeholder.svg"}
+                      src={
+                        setupData.qrCodeUrl ||
+                        "/placeholder.svg?height=200&width=200"
+                      }
                       alt="2FA QR Code"
                       className="border rounded-lg"
                     />
@@ -106,12 +169,12 @@ export function TwoFactorSetup({ onComplete }: { onComplete: () => void }) {
                     <Label>Secret Key</Label>
                     <div className="flex gap-2">
                       <code className="flex-1 p-2 bg-gray-100 rounded text-sm font-mono">
-                        {secretKey}
+                        {setupData.secretKey}
                       </code>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => copyToClipboard(secretKey)}
+                        onClick={() => copyToClipboard(setupData.secretKey)}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -123,32 +186,47 @@ export function TwoFactorSetup({ onComplete }: { onComplete: () => void }) {
                 </div>
               </div>
 
-              {showBackupCodes && (
-                <Alert>
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    <div className="space-y-2">
-                      <p className="font-semibold">Backup Recovery Codes</p>
-                      <p className="text-sm">
-                        Save these codes in a secure location. You can use them
-                        to access your account if you lose your authenticator
-                        device.
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                        {backupCodes.map((code, index) => (
-                          <code
-                            key={index}
-                            className="p-2 bg-gray-100 rounded text-sm font-mono"
-                          >
-                            {code}
-                          </code>
-                        ))}
-                      </div>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="verification-code">Verification Code</Label>
+                <Input
+                  id="verification-code"
+                  type="text"
+                  placeholder="Enter 6-digit code from your app"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  maxLength={6}
+                />
+                <p className="text-sm text-gray-600">
+                  Enter the 6-digit code from your authenticator app to enable
+                  2FA
+                </p>
+              </div>
             </div>
+          )}
+
+          {showBackupCodes && setupData?.backupCodes && (
+            <Alert>
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-semibold">Backup Recovery Codes</p>
+                  <p className="text-sm">
+                    Save these codes in a secure location. You can use them to
+                    access your account if you lose your authenticator device.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                    {setupData.backupCodes.map((code, index) => (
+                      <code
+                        key={index}
+                        className="p-2 bg-gray-100 rounded text-sm font-mono"
+                      >
+                        {code}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           <div className="flex justify-end gap-2">

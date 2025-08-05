@@ -1,15 +1,17 @@
-import { useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Badge } from "./ui/badge";
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,104 +19,117 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog";
-import { Textarea } from "./ui/textarea";
+} from "../components/ui/dialog";
+import { Textarea } from "../components/ui/textarea";
+import { Alert, AlertDescription } from "../components/ui/alert";
 import { Search, Plus, FileText } from "lucide-react";
-import { useAuth } from "./auth-context";
-
-interface MedicalRecord {
-  id: string;
-  patientId: string;
-  patientName: string;
-  visitDate: string;
-  diagnosis: string;
-  symptoms: string;
-  treatment: string;
-  medications: string;
-  notes: string;
-  doctorName: string;
-  createdAt: string;
-}
-
-const mockRecords: MedicalRecord[] = [
-  {
-    id: "MR001",
-    patientId: "1",
-    patientName: "John Doe",
-    visitDate: "2024-01-15",
-    diagnosis: "Hypertension",
-    symptoms: "High blood pressure, headaches, dizziness",
-    treatment: "Lifestyle changes, medication",
-    medications: "Lisinopril 10mg daily",
-    notes:
-      "Patient advised to monitor blood pressure daily. Follow-up in 4 weeks.",
-    doctorName: "Dr. John Smith",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "MR002",
-    patientId: "2",
-    patientName: "Jane Smith",
-    visitDate: "2024-02-10",
-    diagnosis: "Asthma Exacerbation",
-    symptoms: "Shortness of breath, wheezing, chest tightness",
-    treatment: "Bronchodilator therapy, corticosteroids",
-    medications: "Albuterol inhaler, Prednisone 20mg",
-    notes: "Patient responded well to treatment. Advised to avoid triggers.",
-    doctorName: "Dr. John Smith",
-    createdAt: "2024-02-10",
-  },
-  {
-    id: "MR003",
-    patientId: "3",
-    patientName: "Mike Johnson",
-    visitDate: "2024-03-05",
-    diagnosis: "Annual Physical Exam",
-    symptoms: "None reported",
-    treatment: "Routine examination",
-    medications: "None prescribed",
-    notes: "Patient in good health. Recommended annual follow-up.",
-    doctorName: "Dr. John Smith",
-    createdAt: "2024-03-05",
-  },
-];
+import { useAuth } from "../components/auth-context";
+import { api, type MedicalRecord } from "../lib/api";
+import { PatientSelector } from "../components/ui/patient-selector";
 
 export function MedicalRecords() {
   const { user } = useAuth();
-  const [records, setRecords] = useState<MedicalRecord[]>(mockRecords);
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<Partial<MedicalRecord>>({});
+  const [formData, setFormData] = useState<
+    Partial<MedicalRecord & { selectedPatientId?: number }>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const canCreate = user?.role === "doctor";
-  const isNurse = user?.role === "nurse";
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      assignRoleBasedOnUsername(user.username);
+    }
+  }, [user]);
+
+  function assignRoleBasedOnUsername(userName: string) {
+    if (userName.startsWith("doc")) {
+      setRole("doctor");
+    } else if (userName.startsWith("nrs")) {
+      setRole("nurse");
+    } else if (userName.startsWith("pha")) {
+      setRole("pharmacist");
+    } else if (userName.startsWith("adm")) {
+      setRole("admin");
+    }
+  }
+
+  const canCreate = role === "doctor";
+  const isNurse = role === "nurse";
+
+  useEffect(() => {
+    loadMedicalRecords();
+  }, []);
+
+  const loadMedicalRecords = async () => {
+    setLoading(true);
+    try {
+      const response = await api.getMedicalRecords();
+      if (response.data) {
+        setRecords(response.data);
+      } else {
+        setError(response.error || "Failed to load medical records");
+      }
+    } catch (error) {
+      setError("Failed to load medical records");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredRecords = records.filter(
     (record) =>
-      record.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (record.patientName || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       record.diagnosis.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.id.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const handleAddRecord = () => {
-    if (formData.patientName && formData.diagnosis && formData.visitDate) {
-      const newRecord: MedicalRecord = {
-        id: `MR${String(records.length + 1).padStart(3, "0")}`,
-        patientId: Date.now().toString(),
-        patientName: formData.patientName,
-        visitDate: formData.visitDate,
-        diagnosis: formData.diagnosis,
-        symptoms: formData.symptoms || "",
-        treatment: formData.treatment || "",
-        medications: formData.medications || "",
-        notes: formData.notes || "",
-        doctorName: user?.fullName || "",
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setRecords([...records, newRecord]);
-      setFormData({});
-      setIsAddDialogOpen(false);
+  const handleAddRecord = async () => {
+    if (
+      formData.selectedPatientId &&
+      formData.patientName &&
+      formData.diagnosis &&
+      formData.visitDate
+    ) {
+      try {
+        const response = await api.createMedicalRecord({
+          patientId: formData.selectedPatientId,
+          patientName: formData.patientName,
+          visitDate: formData.visitDate,
+          diagnosis: formData.diagnosis,
+          symptoms: formData.symptoms || "",
+          treatment: formData.treatment || "",
+          medications: formData.medications || "",
+          notes: formData.notes || "",
+          doctorName: user?.fullName || "",
+        });
+
+        if (response.data) {
+          setRecords([...records, response.data]);
+          setFormData({});
+          setIsAddDialogOpen(false);
+          setError("");
+        } else {
+          setError(response.error || "Failed to create medical record");
+        }
+      } catch (error) {
+        setError("Failed to create medical record");
+      }
     }
+  };
+
+  const handlePatientSelect = (patientId: number, patientName: string) => {
+    setFormData({
+      ...formData,
+      selectedPatientId: patientId,
+      patientName: patientName,
+    });
   };
 
   const renderRecordCard = (record: MedicalRecord) => {
@@ -227,6 +242,14 @@ export function MedicalRecords() {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -256,16 +279,11 @@ export function MedicalRecords() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="patientName">Patient Name *</Label>
-                    <Input
-                      id="patientName"
-                      value={formData.patientName || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          patientName: e.target.value,
-                        })
-                      }
+                    <PatientSelector
+                      value={formData.selectedPatientId?.toString()}
+                      onPatientSelect={handlePatientSelect}
+                      label="Patient"
+                      placeholder="Select a patient..."
                       required
                     />
                   </div>
@@ -351,6 +369,12 @@ export function MedicalRecords() {
           </Dialog>
         )}
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>

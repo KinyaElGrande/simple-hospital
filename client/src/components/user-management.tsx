@@ -1,15 +1,17 @@
-import { useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Badge } from "./ui/badge";
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,93 +19,51 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog";
+} from "../components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import {
-  Search,
-  Plus,
-  UserCog,
-  Shield,
-  User,
-  Mail,
-  Calendar,
-} from "lucide-react";
-import { useAuth, type UserRole } from "./auth-context";
-
-interface SystemUser {
-  id: string;
-  username: string;
-  fullName: string;
-  email: string;
-  role: UserRole;
-  status: "active" | "inactive";
-  lastLogin: string;
-  createdAt: string;
-  twoFactorEnabled: boolean;
-}
-
-const mockUsers: SystemUser[] = [
-  {
-    id: "1",
-    username: "admin",
-    fullName: "System Administrator",
-    email: "admin@medportal.com",
-    role: "admin",
-    status: "active",
-    lastLogin: "2024-01-20",
-    createdAt: "2024-01-01",
-    twoFactorEnabled: true,
-  },
-  {
-    id: "2",
-    username: "dr.smith",
-    fullName: "Dr. John Smith",
-    email: "j.smith@medportal.com",
-    role: "doctor",
-    status: "active",
-    lastLogin: "2024-01-19",
-    createdAt: "2024-01-05",
-    twoFactorEnabled: false,
-  },
-  {
-    id: "3",
-    username: "nurse.jane",
-    fullName: "Jane Wilson",
-    email: "j.wilson@medportal.com",
-    role: "nurse",
-    status: "active",
-    lastLogin: "2024-01-18",
-    createdAt: "2024-01-10",
-    twoFactorEnabled: true,
-  },
-  {
-    id: "4",
-    username: "pharm.bob",
-    fullName: "Bob Johnson",
-    email: "b.johnson@medportal.com",
-    role: "pharmacist",
-    status: "active",
-    lastLogin: "2024-01-17",
-    createdAt: "2024-01-15",
-    twoFactorEnabled: false,
-  },
-];
+} from "../components/ui/select";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Search, Plus, UserCog, Shield, User, Mail } from "lucide-react";
+import { useAuth } from "../components/auth-context";
+import { api, type User as ApiUser } from "../lib/api";
 
 export function UserManagement() {
   const { user } = useAuth();
-  const [users, setUsers] = useState<SystemUser[]>(mockUsers);
+  const [users, setUsers] = useState<ApiUser[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<Partial<SystemUser>>({});
+  const [formData, setFormData] = useState<Partial<ApiUser>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.username.startsWith("admin");
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError("");
+
+      const response = await api.getUsers();
+
+      if (response.data) {
+        setUsers(response.data);
+      } else if (response.error) {
+        setError(response.error);
+      }
+
+      setLoading(false);
+    };
+
+    console.log("mwitu", user);
+
+    fetchUsers();
+  }, []);
 
   if (!isAdmin) {
     return (
@@ -124,34 +84,39 @@ export function UserManagement() {
   const filteredUsers = users.filter((systemUser) => {
     const matchesSearch =
       systemUser.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      systemUser.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      systemUser.email.toLowerCase().includes(searchTerm.toLowerCase());
+      systemUser.username.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesRole = roleFilter === "all" || systemUser.role === roleFilter;
 
     return matchesSearch && matchesRole;
   });
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (formData.username && formData.fullName && formData.role) {
-      const newUser: SystemUser = {
-        id: Date.now().toString(),
-        username: formData.username,
-        fullName: formData.fullName,
-        email: formData.email || "",
-        role: formData.role as UserRole,
-        status: "active",
-        lastLogin: "Never",
-        createdAt: new Date().toISOString().split("T")[0],
-        twoFactorEnabled: false,
-      };
-      setUsers([...users, newUser]);
-      setFormData({});
-      setIsAddDialogOpen(false);
+      try {
+        const response = await api.createUser({
+          username: formData.username,
+          fullName: formData.fullName,
+          role: formData.role,
+          twoFactorEnabled: false,
+        });
+
+        if (response.data) {
+          setUsers([...users, response.data]);
+          setFormData({});
+          setIsAddDialogOpen(false);
+          setError("");
+        } else {
+          setError(response.error || "Failed to create user");
+        }
+      } catch (error) {
+        console.error(error);
+        setError("Failed to create user");
+      }
     }
   };
 
-  const getRoleBadgeColor = (role: UserRole) => {
+  const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "admin":
         return "bg-red-100 text-red-800";
@@ -166,11 +131,13 @@ export function UserManagement() {
     }
   };
 
-  const getStatusBadgeColor = (status: string) => {
-    return status === "active"
-      ? "bg-green-100 text-green-800"
-      : "bg-gray-100 text-gray-800";
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -218,23 +185,13 @@ export function UserManagement() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                />
-              </div>
+              <div className="space-y-4"></div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role *</Label>
                 <Select
                   value={formData.role || ""}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, role: value as UserRole })
+                    setFormData({ ...formData, role: value })
                   }
                 >
                   <SelectTrigger>
@@ -261,6 +218,12 @@ export function UserManagement() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
@@ -324,9 +287,7 @@ export function UserManagement() {
                       <Badge className={getRoleBadgeColor(systemUser.role)}>
                         {systemUser.role.toUpperCase()}
                       </Badge>
-                      <Badge className={getStatusBadgeColor(systemUser.status)}>
-                        {systemUser.status.toUpperCase()}
-                      </Badge>
+
                       {systemUser.twoFactorEnabled && (
                         <Shield
                           className="h-4 w-4 text-secondary-600"
@@ -346,25 +307,18 @@ export function UserManagement() {
                       <div className="flex items-center gap-2">
                         <Mail className="h-4 w-4 text-gray-400" />
                         <div>
-                          <p className="font-medium">Email</p>
-                          <p className="text-gray-600">
-                            {systemUser.email || "Not provided"}
-                          </p>
+                          <p className="font-medium">Username</p>
+                          <p className="text-gray-600">{systemUser.username}</p>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
                         <div>
-                          <p className="font-medium">Last Login</p>
+                          <p className="font-medium">2FA Status</p>
                           <p className="text-gray-600">
-                            {systemUser.lastLogin}
+                            {systemUser.twoFactorEnabled
+                              ? "Enabled"
+                              : "Disabled"}
                           </p>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="mt-3 text-sm text-gray-600">
-                      <p>Account created: {systemUser.createdAt}</p>
                     </div>
                   </div>
                 </div>

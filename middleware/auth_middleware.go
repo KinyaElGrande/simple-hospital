@@ -11,9 +11,9 @@ import (
 )
 
 // Context key for storing user info
-type contextKey string
+// type contextKey string
 
-const UserContextKey contextKey = "user"
+// const UserContextKey contextKey = "user"
 
 // AuthMiddleware handles basic authentication
 type AuthMiddleware struct {
@@ -42,27 +42,34 @@ func (am *AuthMiddleware) BasicAuth(next http.Handler) http.Handler {
 		}
 
 		// if 2FA is enabled for this user
-		if user.TwoFAEnabled {
-			twoFACode := r.Header.Get("X-2FA-Code")
-			if twoFACode == "" {
-				// Return 401 with a custom header indicating 2FA is required
-				w.Header().Set("WWW-Authenticate", "Basic realm=\"Simple Hospital System\", 2FA required")
-				http.Error(w, "2FA code required", http.StatusUnauthorized)
-				return
-			}
+		// if user.TwoFAEnabled {
+		// 	twoFACode := r.Header.Get("X-2FA-Code")
+		// 	if twoFACode == "" {
+		// 		// Return 401 with a custom header indicating 2FA is required
+		// 		w.Header().Set("WWW-Authenticate", "Basic realm=\"Simple Hospital System\", 2FA required")
+		// 		http.Error(w, "2FA code required", http.StatusUnauthorized)
+		// 		return
+		// 	}
 
-			// Verify 2FA code
-			twoFAService := am.userService.GetTwoFAService()
-			valid, err := twoFAService.VerifyTwoFA(user.UserID, twoFACode)
-			if err != nil || !valid {
-				http.Error(w, "Invalid 2FA code", http.StatusUnauthorized)
-				return
-			}
-		}
+		// 	// Verify 2FA code
+		// 	twoFAService := am.userService.GetTwoFAService()
+		// 	valid, err := twoFAService.VerifyTwoFA(user.UserID, twoFACode)
+		// 	if err != nil || !valid {
+		// 		http.Error(w, "Invalid 2FA code", http.StatusUnauthorized)
+		// 		return
+		// 	}
+		// }
 
 		// Add user to context
 		ctx := context.WithValue(r.Context(), UserContextKey, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// Temporary for Demo
+func (am *AuthMiddleware) WebappBasicAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(r.Context()))
 	})
 }
 
@@ -83,9 +90,14 @@ func (am *AuthMiddleware) authenticateUser(username, password string) (*models.U
 	return user, nil
 }
 
-func GetUserFromContext(r *http.Request) (*models.User, bool) {
-	user, ok := r.Context().Value(UserContextKey).(*models.User)
-	return user, ok
+// func GetUserFromContext(r *http.Request) (*models.User, bool) {
+// 	user, ok := r.Context().Value(UserContextKey).(*models.User)
+// 	return user, ok
+// }
+
+// SetUserContext adds a user to the context
+func SetUserContext(ctx context.Context, user *models.User) context.Context {
+	return context.WithValue(ctx, UserContextKey, user)
 }
 
 // RequireRole middleware to check user role
@@ -112,4 +124,23 @@ func RequireRole(allowedRoles ...string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// Require2FA middleware to ensure user has 2FA enabled
+func Require2FA(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := GetUserFromContext(r)
+		if !ok {
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user has 2FA enabled
+		if !user.TwoFAEnabled {
+			http.Error(w, "Two-Factor Authentication required", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

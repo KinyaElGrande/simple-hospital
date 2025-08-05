@@ -47,7 +47,7 @@ func createTables() error {
             role TEXT CHECK(role IN ('Admin','Doctor', 'Nurse', 'Pharmacist')),
             full_name TEXT NOT NULL,
             two_fa_secret TEXT,
-            two_fa_enabled BOOLEAN DEFAULT FALSE,
+            two_fa_enabled BOOLEAN DEFAULT TRUE,
             two_fa_backup_codes TEXT
         );`,
 		`CREATE TABLE IF NOT EXISTS MedicalRecords (
@@ -67,7 +67,7 @@ func createTables() error {
 				patient_id,
 				visit_date,
 				diagnosis
-			FROM medical_records;`,
+			FROM MedicalRecords;`,
 		`CREATE TABLE IF NOT EXISTS Prescriptions (
             prescription_id INTEGER PRIMARY KEY,
             patient_id INTEGER NOT NULL,

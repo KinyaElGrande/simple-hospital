@@ -1,11 +1,13 @@
+"use client";
+
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Badge } from "./ui/badge";
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import {
   Users,
   FileText,
@@ -14,13 +16,33 @@ import {
   Activity,
   Calendar,
 } from "lucide-react";
-import { useAuth } from "./auth-context";
+import { useEffect, useState } from "react";
+import { useAuth } from "../components/auth-context";
 
 export function DashboardHome() {
   const { user } = useAuth();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      assignRoleBasedOnUsername(user.username);
+    }
+  }, [user]);
+
+  function assignRoleBasedOnUsername(userName: string) {
+    if (userName.startsWith("doc")) {
+      setRole("doctor");
+    } else if (userName.startsWith("nrs")) {
+      setRole("nurse");
+    } else if (userName.startsWith("pha")) {
+      setRole("pharmacist");
+    } else if (userName.startsWith("adm")) {
+      setRole("admin");
+    }
+  }
 
   const getStatsForRole = () => {
-    switch (user?.role) {
+    switch (role) {
       case "doctor":
         return [
           {
@@ -172,7 +194,7 @@ export function DashboardHome() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {user?.role === "doctor" && (
+              {role === "doctor" && (
                 <>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
@@ -203,7 +225,7 @@ export function DashboardHome() {
                   </div>
                 </>
               )}
-              {user?.role === "nurse" && (
+              {role === "nurse" && (
                 <>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
@@ -221,7 +243,7 @@ export function DashboardHome() {
                   </div>
                 </>
               )}
-              {user?.role === "pharmacist" && (
+              {role === "pharmacist" && (
                 <>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
@@ -243,7 +265,7 @@ export function DashboardHome() {
                   </div>
                 </>
               )}
-              {user?.role === "admin" && (
+              {role === "admin" && (
                 <>
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-red-600 rounded-full"></div>
@@ -272,7 +294,7 @@ export function DashboardHome() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
-              {user?.role === "doctor" && (
+              {role === "doctor" && (
                 <>
                   <button className="p-3 text-left border rounded-lg hover:bg-gray-50 transition-colors">
                     <Users className="h-5 w-5 text-primary-600 mb-2" />
@@ -292,7 +314,7 @@ export function DashboardHome() {
                   </button>
                 </>
               )}
-              {user?.role === "nurse" && (
+              {role === "nurse" && (
                 <>
                   <button className="p-3 text-left border rounded-lg hover:bg-gray-50 transition-colors">
                     <Users className="h-5 w-5 text-primary-600 mb-2" />
@@ -304,7 +326,7 @@ export function DashboardHome() {
                   </button>
                 </>
               )}
-              {user?.role === "pharmacist" && (
+              {role === "pharmacist" && (
                 <>
                   <button className="p-3 text-left border rounded-lg hover:bg-gray-50 transition-colors">
                     <Pill className="h-5 w-5 text-purple-600 mb-2" />
@@ -318,7 +340,7 @@ export function DashboardHome() {
                   </button>
                 </>
               )}
-              {user?.role === "admin" && (
+              {role === "admin" && (
                 <>
                   <button className="p-3 text-left border rounded-lg hover:bg-gray-50 transition-colors">
                     <UserCog className="h-5 w-5 text-primary-600 mb-2" />

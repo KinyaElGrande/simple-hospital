@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/kinyaelgrande/simple-hospital/middleware"
@@ -37,6 +38,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: create a user response model
 	user.PasswordHash = ""
+	user.Role = strings.ToLower(user.Role)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
 }
@@ -61,6 +63,24 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: create a user response model
 	user.PasswordHash = ""
+	user.Role = strings.ToLower(user.Role)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+
+func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.service.GetUsers()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: create a user response model
+	for i := range users {
+		users[i].PasswordHash = ""
+		users[i].Role = strings.ToLower(users[i].Role)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
 }

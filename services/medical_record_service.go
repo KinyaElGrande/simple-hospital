@@ -28,6 +28,41 @@ func (s *MedicalRecordService) CreateMedicalRecord(record *models.MedicalRecord)
 	return nil
 }
 
+func (s *MedicalRecordService) GetMedicalRecords() ([]models.MedicalRecord, error) {
+	var records []models.MedicalRecord
+
+	query := `SELECT record_id, patient_id, doctor_id, visit_date, diagnosis, treatment_plan, doctor_notes FROM MedicalRecords`
+
+	rows, err := database.GetDB().Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var record models.MedicalRecord
+		err := rows.Scan(
+			&record.RecordID,
+			&record.PatientID,
+			&record.DoctorID,
+			&record.VisitDate,
+			&record.Diagnosis,
+			&record.TreatmentPlan,
+			&record.DoctorNotes,
+		)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
 func (s *MedicalRecordService) GetMedicalRecord(id int) (*models.MedicalRecord, error) {
 	var record models.MedicalRecord
 
@@ -49,8 +84,29 @@ func (s *MedicalRecordService) GetMedicalRecord(id int) (*models.MedicalRecord, 
 	return &record, nil
 }
 
+func (s *MedicalRecordService) GetMedicalRecordsByPatient(patientID int) ([]models.MedicalRecord, error) {
+	query := "SELECT record_id, patient_id, doctor_id, visit_date, diagnosis, treatment_plan, doctor_notes FROM MedicalRecords WHERE patient_id = ?"
+	rows, err := database.GetDB().Query(query, patientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []models.MedicalRecord
+	for rows.Next() {
+		var record models.MedicalRecord
+		err := rows.Scan(&record.RecordID, &record.PatientID, &record.DoctorID, &record.VisitDate, &record.Diagnosis, &record.TreatmentPlan, &record.DoctorNotes)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+
+	return records, nil
+}
+
 func (s *MedicalRecordService) GetNurseRecord(recordID int) (*models.MedicalRecordNurseView, error) {
-	query := "SELECT record_id, patient_id, visit_date, diagnosis FROM nurse_view WHERE record_id = ?"
+	query := "SELECT record_id, patient_id, visit_date, diagnosis FROM nurse_medical_records_view WHERE record_id = ?"
 	row := database.GetDB().QueryRow(query, recordID)
 
 	var record models.MedicalRecordNurseView
@@ -63,6 +119,27 @@ func (s *MedicalRecordService) GetNurseRecord(recordID int) (*models.MedicalReco
 	}
 
 	return &record, nil
+}
+
+func (s *MedicalRecordService) GetNurseRecordsByPatient(patientID int) ([]models.MedicalRecordNurseView, error) {
+	query := "SELECT record_id, patient_id, visit_date, diagnosis FROM nurse_medical_records_view WHERE patient_id = ?"
+	rows, err := database.GetDB().Query(query, patientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []models.MedicalRecordNurseView
+	for rows.Next() {
+		var record models.MedicalRecordNurseView
+		err := rows.Scan(&record.RecordID, &record.PatientID, &record.VisitDate, &record.Diagnosis)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+
+	return records, nil
 }
 
 func (s *MedicalRecordService) GetNurseViewRecords() ([]models.MedicalRecordNurseView, error) {
