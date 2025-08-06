@@ -13,7 +13,7 @@ import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { QrCode, Key, Shield, Copy } from "lucide-react";
+import { QrCode, Key, Hospital, Copy } from "lucide-react";
 import { useAuth } from "../components/auth-context";
 import { api } from "../lib/api";
 
@@ -104,7 +104,7 @@ export function TwoFactorSetup({ onComplete }: { onComplete: () => void }) {
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-secondary-100">
-            <Shield className="h-6 w-6 text-secondary-700" />
+            <Hospital className="h-6 w-6 text-secondary-700" />
           </div>
           <CardTitle className="text-2xl font-bold">
             Two-Factor Authentication
@@ -206,7 +206,7 @@ export function TwoFactorSetup({ onComplete }: { onComplete: () => void }) {
 
           {showBackupCodes && setupData?.backupCodes && (
             <Alert>
-              <Shield className="h-4 w-4" />
+              <Hospital className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-2">
                   <p className="font-semibold">Backup Recovery Codes</p>

@@ -2,7 +2,7 @@
 
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { LogOut, User, Shield } from "lucide-react";
+import { LogOut, User, Hospital } from "lucide-react";
 import { useAuth } from "../components/auth-context";
 import { useState, useEffect } from "react";
 
@@ -64,7 +64,7 @@ export function Header() {
               {role?.toUpperCase()}
             </Badge>
             {user?.twoFactorEnabled && (
-              <Shield
+              <Hospital
                 className="h-4 w-4 text-secondary-600"
                 title="2FA Enabled"
               />

@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { Search, Plus, UserCog, Shield, User, Mail } from "lucide-react";
+import { Search, Plus, UserCog, Hospital, User, Mail } from "lucide-react";
 import { useAuth } from "../components/auth-context";
 import { api, type User as ApiUser } from "../lib/api";
 
@@ -69,7 +69,7 @@ export function UserManagement() {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <Hospital className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
             Access Denied
           </h2>
@@ -289,7 +289,7 @@ export function UserManagement() {
                       </Badge>
 
                       {systemUser.twoFactorEnabled && (
-                        <Shield
+                        <Hospital
                           className="h-4 w-4 text-secondary-600"
                           title="2FA Enabled"
                         />

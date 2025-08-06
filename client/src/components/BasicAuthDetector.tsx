@@ -12,14 +12,17 @@ import {
   CardTitle,
 } from "./ui/card";
 import { Alert, AlertDescription } from "./ui/alert";
-import { KeyRound, Shield } from "lucide-react";
+import { KeyRound, Hospital } from "lucide-react";
 
 interface BasicAuthDetectorProps {
   onTransitionComplete?: (sessionId: string) => void;
   onCancel?: () => void;
 }
 
-export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthDetectorProps) {
+export function BasicAuthDetector({
+  onTransitionComplete,
+  onCancel,
+}: BasicAuthDetectorProps) {
   const [twoFACode, setTwoFACode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,7 +36,10 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
       if (sessionData) {
         try {
           const session = JSON.parse(sessionData);
-          if (session.sessionId === "basic-auth" || session.sessionId === "basic-auth-2fa") {
+          if (
+            session.sessionId === "basic-auth" ||
+            session.sessionId === "basic-auth-2fa"
+          ) {
             // We have a basic auth session, check if user has credentials
             const credentials = localStorage.getItem("medical-app-credentials");
             if (credentials) {
@@ -68,7 +74,7 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
 
     try {
       const credentials = JSON.parse(
-        localStorage.getItem("medical-app-credentials") || "{}"
+        localStorage.getItem("medical-app-credentials") || "{}",
       );
 
       if (!credentials.username || !credentials.password) {
@@ -77,7 +83,10 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
         return;
       }
 
-      console.log("Initiating basic-auth to 2FA transition for user:", credentials.username);
+      console.log(
+        "Initiating basic-auth to 2FA transition for user:",
+        credentials.username,
+      );
 
       const response = await fetch(
         "https://localhost:8443/api/auth/2fa/transition",
@@ -87,7 +96,7 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
             Authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const data = await response.json();
@@ -134,7 +143,7 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
             sessionId: tempSessionId,
             code: twoFACode,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -148,7 +157,10 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
           requires2FA: false,
         };
 
-        localStorage.setItem("medical-app-session", JSON.stringify(sessionData));
+        localStorage.setItem(
+          "medical-app-session",
+          JSON.stringify(sessionData),
+        );
         setShowTransition(false);
 
         if (onTransitionComplete) {
@@ -185,14 +197,15 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            <Shield className="h-6 w-6 text-blue-600" />
+            <Hospital className="h-6 w-6 text-blue-600" />
           </div>
-          <CardTitle className="text-xl font-bold">Two-Factor Authentication Required</CardTitle>
+          <CardTitle className="text-xl font-bold">
+            Two-Factor Authentication Required
+          </CardTitle>
           <CardDescription>
             {tempSessionId
               ? "Enter the 6-digit code from your authenticator app"
-              : "Setting up secure session..."
-            }
+              : "Setting up secure session..."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -209,7 +222,7 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
                     value={twoFACode}
                     onChange={(e) =>
                       setTwoFACode(
-                        e.target.value.replace(/\D/g, "").slice(0, 6)
+                        e.target.value.replace(/\D/g, "").slice(0, 6),
                       )
                     }
                     className="pl-10 text-center text-lg tracking-widest"
@@ -256,7 +269,9 @@ export function BasicAuthDetector({ onTransitionComplete, onCancel }: BasicAuthD
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                 <p className="mt-2 text-sm text-gray-600">
-                  {loading ? "Creating secure session..." : "Preparing 2FA verification"}
+                  {loading
+                    ? "Creating secure session..."
+                    : "Preparing 2FA verification"}
                 </p>
               </div>
 

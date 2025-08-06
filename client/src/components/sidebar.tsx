@@ -2,7 +2,7 @@
 
 import { Button } from "../components/ui/button";
 import { cn } from "../lib/utils";
-import { Users, FileText, Pill, UserCog, Home, Shield } from "lucide-react";
+import { Users, FileText, Pill, UserCog, Home, Hospital } from "lucide-react";
 import { useAuth } from "../components/auth-context";
 import type { SidebarProps, ActiveSection } from "../components/dashboard";
 import { useEffect, useState } from "react";
@@ -82,7 +82,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
     <div className="w-64 bg-white shadow-lg border-r">
       <div className="p-6 border-b">
         <div className="flex items-center gap-2">
-          <Shield className="h-8 w-8 text-primary-600" />
+          <Hospital className="h-8 w-8 text-primary-600" />
           <div>
             <h1 className="text-xl font-bold text-gray-900">MedPortal</h1>
             <p className="text-sm text-gray-600">Healthcare System</p>

@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { Shield, Copy, Check, AlertTriangle, QrCode } from "lucide-react";
+import { Hospital, Copy, Check, AlertTriangle, QrCode } from "lucide-react";
 import { useAuth } from "../components/auth-context";
 import { api } from "../lib/api";
 
@@ -27,7 +27,9 @@ export function MandatoryTwoFactorSetup() {
   const [verificationCode, setVerificationCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState<"setup" | "verify" | "backup">("setup");
+  const [currentStep, setCurrentStep] = useState<"setup" | "verify" | "backup">(
+    "setup",
+  );
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
   const { user, enable2FA } = useAuth();
@@ -68,7 +70,7 @@ export function MandatoryTwoFactorSetup() {
   const handleCopyBackupCodes = async () => {
     if (setupData?.backupCodes) {
       try {
-        const codesText = setupData.backupCodes.join('\n');
+        const codesText = setupData.backupCodes.join("\n");
         await navigator.clipboard.writeText(codesText);
         setCopiedBackupCodes(true);
         setTimeout(() => setCopiedBackupCodes(false), 2000);
@@ -80,7 +82,9 @@ export function MandatoryTwoFactorSetup() {
 
   const handleVerifyCode = async () => {
     if (!verificationCode.trim()) {
-      setError("Please enter the verification code from your authenticator app");
+      setError(
+        "Please enter the verification code from your authenticator app",
+      );
       return;
     }
 
@@ -96,10 +100,14 @@ export function MandatoryTwoFactorSetup() {
       const response = await api.enableTwoFA(verificationCode);
       if (response.data) {
         enable2FA();
-        setSetupData(prev => prev ? { ...prev, backupCodes: response.data!.backupCodes } : null);
+        setSetupData((prev) =>
+          prev ? { ...prev, backupCodes: response.data!.backupCodes } : null,
+        );
         setCurrentStep("backup");
       } else {
-        setError(response.error || "Invalid verification code. Please try again.");
+        setError(
+          response.error || "Invalid verification code. Please try again.",
+        );
       }
     } catch (error) {
       console.error("Failed to enable 2FA:", error);
@@ -139,15 +147,16 @@ export function MandatoryTwoFactorSetup() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <Shield className="h-8 w-8 text-red-600" />
+              <Hospital className="h-8 w-8 text-red-600" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
             Security Setup Required
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            To protect sensitive medical data, all users must enable Two-Factor Authentication.
-            This adds an extra layer of security to your account.
+            To protect sensitive medical data, all users must enable Two-Factor
+            Authentication. This adds an extra layer of security to your
+            account.
           </CardDescription>
         </CardHeader>
 
@@ -168,7 +177,9 @@ export function MandatoryTwoFactorSetup() {
                     1
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-blue-900 mb-2">Install an Authenticator App</h3>
+                    <h3 className="font-semibold text-blue-900 mb-2">
+                      Install an Authenticator App
+                    </h3>
                     <p className="text-blue-800 text-sm mb-3">
                       Download and install an authenticator app on your phone:
                     </p>
@@ -187,13 +198,20 @@ export function MandatoryTwoFactorSetup() {
                     2
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-green-900 mb-2">Scan QR Code or Enter Secret Key</h3>
+                    <h3 className="font-semibold text-green-900 mb-2">
+                      Scan QR Code or Enter Secret Key
+                    </h3>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="text-center">
-                        <p className="text-green-800 text-sm mb-3">Scan this QR code:</p>
+                        <p className="text-green-800 text-sm mb-3">
+                          Scan this QR code:
+                        </p>
                         <div className="flex justify-center">
                           <img
-                            src={setupData.qrCodeUrl || "/placeholder.svg?height=200&width=200"}
+                            src={
+                              setupData.qrCodeUrl ||
+                              "/placeholder.svg?height=200&width=200"
+                            }
                             alt="2FA QR Code"
                             className="border rounded-lg bg-white p-2"
                             width={200}
@@ -202,7 +220,9 @@ export function MandatoryTwoFactorSetup() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-green-800 text-sm mb-3">Or enter this secret key manually:</p>
+                        <p className="text-green-800 text-sm mb-3">
+                          Or enter this secret key manually:
+                        </p>
                         <div className="bg-white border rounded-lg p-3">
                           <div className="flex items-center justify-between gap-2">
                             <code className="text-sm font-mono break-all text-gray-800">
@@ -245,9 +265,12 @@ export function MandatoryTwoFactorSetup() {
                     3
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-orange-900 mb-2">Verify Setup</h3>
+                    <h3 className="font-semibold text-orange-900 mb-2">
+                      Verify Setup
+                    </h3>
                     <p className="text-orange-800 text-sm">
-                      Enter the 6-digit code from your authenticator app to complete setup:
+                      Enter the 6-digit code from your authenticator app to
+                      complete setup:
                     </p>
                   </div>
                 </div>
@@ -262,7 +285,9 @@ export function MandatoryTwoFactorSetup() {
                     placeholder="000000"
                     value={verificationCode}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      const value = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 6);
                       setVerificationCode(value);
                     }}
                     className="text-center text-2xl tracking-widest font-mono"
@@ -301,10 +326,13 @@ export function MandatoryTwoFactorSetup() {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-red-900 mb-2">Important: Save Your Backup Codes</h3>
+                    <h3 className="font-semibold text-red-900 mb-2">
+                      Important: Save Your Backup Codes
+                    </h3>
                     <p className="text-red-800 text-sm">
-                      These backup codes can be used to access your account if you lose your phone.
-                      Save them in a secure location - you won't be able to see them again.
+                      These backup codes can be used to access your account if
+                      you lose your phone. Save them in a secure location - you
+                      won't be able to see them again.
                     </p>
                   </div>
                 </div>
@@ -334,7 +362,10 @@ export function MandatoryTwoFactorSetup() {
                 <div className="bg-gray-50 border rounded-lg p-4">
                   <div className="grid grid-cols-2 gap-2 font-mono text-sm">
                     {setupData.backupCodes.map((code, index) => (
-                      <div key={index} className="bg-white border rounded px-3 py-2 text-center">
+                      <div
+                        key={index}
+                        className="bg-white border rounded px-3 py-2 text-center"
+                      >
                         {code}
                       </div>
                     ))}
@@ -343,10 +374,11 @@ export function MandatoryTwoFactorSetup() {
               </div>
 
               <Alert>
-                <Shield className="h-4 w-4" />
+                <Hospital className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>2FA has been successfully enabled!</strong> Your account is now protected with
-                  two-factor authentication. Make sure to save your backup codes before proceeding.
+                  <strong>2FA has been successfully enabled!</strong> Your
+                  account is now protected with two-factor authentication. Make
+                  sure to save your backup codes before proceeding.
                 </AlertDescription>
               </Alert>
 

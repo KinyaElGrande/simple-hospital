@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
-import { LogOut, ChevronDown, Shield, AlertTriangle } from "lucide-react";
+import { LogOut, ChevronDown, Hospital, AlertTriangle } from "lucide-react";
 import { useAuth } from "../components/auth-context";
 import { api } from "../lib/api";
 
@@ -71,7 +71,7 @@ export function LogoutButton({
       id: "force",
       label: "Force Logout",
       description: "Aggressive logout - clears all browser data",
-      icon: <Shield className="h-4 w-4" />,
+      icon: <Hospital className="h-4 w-4" />,
       endpoint: "/api/logout/force",
       confirmRequired: true,
     },
@@ -350,7 +350,7 @@ export function LogoutButton({
                   <div className="flex items-center space-x-2">
                     <p className="text-sm font-medium">{option.label}</p>
                     {option.confirmRequired && (
-                      <Shield className="h-3 w-3 text-amber-500" />
+                      <Hospital className="h-3 w-3 text-amber-500" />
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -376,7 +376,7 @@ export function LogoutButton({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center space-x-2">
-              <Shield className="h-5 w-5 text-amber-500" />
+              <Hospital className="h-5 w-5 text-amber-500" />
               <span>Confirm Force Logout</span>
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
